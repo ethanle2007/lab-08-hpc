@@ -1,0 +1,5 @@
+JobID           JobName      User    Account  Partition  AllocCPUS              Submit               Start    Elapsed      State ExitCode 
+------------ ---------- --------- ---------- ---------- ---------- ------------------- ------------------- ---------- ---------- -------- 
+22829459_[1+  summarize    uqw6qw     ds2022    gpu-mig          0 2026-11-11T15:43:47                None   00:00:00 CANCELLED+      0:0 
+22829465_[1+  summarize    uqw6qw     ds2022    gpu-mig          0 2026-11-11T15:44:03                None   00:00:00 CANCELLED+      0:0 
+22829789_[1]  summarize    uqw6qw     ds2022    gpu-mig          0 2026-11-11T15:48:51             Unknown   00:00:00    PENDING      0:0 
