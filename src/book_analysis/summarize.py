@@ -65,13 +65,64 @@ def summarize_book(text):
 def upload_summary(key, summary, genre, job):
     """Add the summary and genre to the document with _id key in gutenberg.books, and add a run."""
     # TODO: Part 1, Step 1 of README.md
-    raise NotImplementedError("upload_summary")
+    client = MongoClient(
+        os.environ["MONGO_URL"],         
+        username=os.environ["MONGO_USER"],
+        password=os.environ["MONGO_PASSWORD"],
+    )
+    collection = client["gutenberg"]["books"]
+    now = datetime.now(timezone.utc)
+    try:
+        result = collection.update_one(
+            {"_id": key},
+            {
+                "$set": {"llm_analysis": {"summary": summary, "genre": genre, "model": MODEL, "at": now}},
+                "$push": {"runs": {"job": job, "at": now}},
+            },
+        )
+        if result.matched_count == 0:
+            logger.warning("No document with _id %s in gutenberg.books", key)
+    except PyMongoError as e:
+        logger.error("Could not save the summary for %s: %s", key, e)
+        raise
+    finally:
+        client.close()
 
 
 def main():
     """Summarize book number TASK_ID of BOOK_LIST and save the result in MongoDB."""
     # TODO: Part 1, Step 1 of README.md
-    raise NotImplementedError("main")
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+
+    if len(sys.argv) != 3:
+        logger.error("Usage: python %s BOOK_LIST TASK_ID", sys.argv[0])
+        sys.exit(1)
+    book_list = sys.argv[1]
+    task_id = int(sys.argv[2])
+
+    with open(book_list) as f:
+        lines = [line.strip() for line in f]
+    books = [line for line in lines if line and line != "File path"]
+
+    if task_id < 1 or task_id > len(books):
+        logger.error("TASK_ID must be between 1 and %d, got %d", len(books), task_id)
+        sys.exit(1)
+
+    path = books[task_id - 1]
+    key = path.split("/")[-1]
+    logger.info("Task %d: %s (%s)", task_id, key, path)
+
+    start = time.time()
+    text = read_book(path)
+    summary, genre = summarize_book(text)
+    logger.info("%s: genre %s, %.1f s", key, genre, time.time() - start)
+
+    a = os.environ.get("SLURM_ARRAY_JOB_ID")
+    b = os.environ.get("SLURM_ARRAY_TASK_ID")
+    job = f"{a}_{b}" if a and b else None
+
+    upload_summary(key, summary, genre, job)
+    print(f"Summarized {key} in {time.time() - start:.1f} s on {socket.gethostname()}")
 
 
 if __name__ == "__main__":
